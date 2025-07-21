@@ -30,61 +30,92 @@ import os
 
 
 pp = pprint.PrettyPrinter(indent=2)
-org_id = app.config['MERAKI_ORGANIZATION_ID']
-dashboard = meraki.DashboardAPI(api_key=app.config['MERAKI_API_KEY'], suppress_logging=True)
+org_id = app.config["MERAKI_ORGANIZATION_ID"]
+dashboard = meraki.DashboardAPI(
+    api_key=app.config["MERAKI_API_KEY"], suppress_logging=True
+)
 
-logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename="app.log",
+    filemode="a",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 # Mode Selection
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def index():
-    return render_template('index.html', title='Home')
+    return render_template("index.html", title="Home")
 
 
 # Backup Mode
-@app.route('/backup', methods=['GET', 'POST'])
+@app.route("/backup", methods=["GET", "POST"])
 def backup():
     networklist = []
-    namelist =[]
+    namelist = []
     n = 0
     for network in dashboard.organizations.getOrganizationNetworks(org_id):
         networklist.append(network)
         n += 1
-    if request.method == 'GET':
-        return render_template('backup.html', title='Backup', tab=1, netdata=networklist, status="Waiting for job")
-    elif request.method == 'POST':
-        netslist = request.form.getlist('nets')
+    if request.method == "GET":
+        return render_template(
+            "backup.html",
+            title="Backup",
+            tab=1,
+            netdata=networklist,
+            status="Waiting for job",
+        )
+    elif request.method == "POST":
+        netslist = request.form.getlist("nets")
         for network in netslist:
             bk.backup(network)
         for network in netslist:
-            namelist.append(dashboard.networks.getNetwork(network)['name'])
-        return render_template('backup.html', title='Backup', tab=1, netdata=networklist, status="Finished Backup",
-                               netslist=namelist)
+            namelist.append(dashboard.networks.getNetwork(network)["name"])
+        return render_template(
+            "backup.html",
+            title="Backup",
+            tab=1,
+            netdata=networklist,
+            status="Finished Backup",
+            netslist=namelist,
+        )
 
 
 # Restore Mode
-@app.route('/restore', methods=['GET', 'POST'])
+@app.route("/restore", methods=["GET", "POST"])
 def restore():
     networklist = []
     namelist = []
     backuplist = []
-    for name in os.listdir('configs/'):
-        if name.endswith('.json'):
+    for name in os.listdir("configs/"):
+        if name.endswith(".json"):
             backuplist.append(name)
     n = 0
     for network in dashboard.organizations.getOrganizationNetworks(org_id):
         networklist.append(network)
         n += 1
-    if request.method == 'GET':
-        return render_template('restore.html', title='Restore', tab=1, netdata=networklist, status="Waiting for job",
-                               backuplist=backuplist)
-    elif request.method == 'POST':
-        netslist = request.form.getlist('nets')
-        backupfile = request.form.get('backups')
+    if request.method == "GET":
+        return render_template(
+            "restore.html",
+            title="Restore",
+            tab=1,
+            netdata=networklist,
+            status="Waiting for job",
+            backuplist=backuplist,
+        )
+    elif request.method == "POST":
+        netslist = request.form.getlist("nets")
+        backupfile = request.form.get("backups")
         for network in netslist:
             bk.restore(network, backupfile)
         for network in netslist:
-            namelist.append(dashboard.networks.getNetwork(network)['name'])
-        return render_template('restore.html', title='Restore', tab=1, netdata=networklist, status="Finished Restore",
-                               netslist=namelist, backuplist=backuplist)
+            namelist.append(dashboard.networks.getNetwork(network)["name"])
+        return render_template(
+            "restore.html",
+            title="Restore",
+            tab=1,
+            netdata=networklist,
+            status="Finished Restore",
+            netslist=namelist,
+            backuplist=backuplist,
+        )
