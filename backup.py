@@ -19,72 +19,91 @@ __author__ = "Josh Ingeniero <jingenie@cisco.com>"
 __copyright__ = "Copyright (c) 2020 Cisco and/or its affiliates."
 __license__ = "Cisco Sample Code License, Version 1.1"
 
-import meraki
 import json
 import logging
 import pprint
 
-import requests
+import meraki
 
 from DETAILS import *
 
 pp = pprint.PrettyPrinter(indent=2)
 org_id = MERAKI_ORGANIZATION_ID
-dashboard = meraki.DashboardAPI(MERAKI_API_KEY)
+dashboard = meraki.DashboardAPI(api_key=MERAKI_API_KEY, suppress_logging=True)
 
-logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename="app.log",
+    filemode="a",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 # Backup Function, add backup functions here
 def backup(network_id):
-    name = dashboard.networks.getNetwork(network_id)['name']
+    name = dashboard.networks.getNetwork(network_id)["name"]
     data = {}
     print(f"Backing up {name} Network")
 
     print("Backing Up MX L7 Firewalls")
     try:
-        data['mx_l7_firewall'] = dashboard.appliance.getNetworkApplianceFirewallL7FirewallRules(network_id)
+        data["mx_l7_firewall"] = (
+            dashboard.appliance.getNetworkApplianceFirewallL7FirewallRules(network_id)
+        )
     except:
         print("MX is not Supported")
 
     print("Backing Up 1 to 1 NAT Rules")
     try:
-        data['mx_1_1_nat_rules'] = dashboard.appliance.getNetworkApplianceFirewallOneToOneNatRules(network_id)
+        data["mx_1_1_nat_rules"] = (
+            dashboard.appliance.getNetworkApplianceFirewallOneToOneNatRules(network_id)
+        )
     except:
         print("MX is not Supported")
 
     print("Backing Up Wireless Settings")
     try:
-        data['wireless_settings'] = dashboard.wireless.getNetworkWirelessSettings(network_id)
+        data["wireless_settings"] = dashboard.wireless.getNetworkWirelessSettings(
+            network_id
+        )
     except:
         print("Wireless is not Supported")
 
     print("Backing Up SSIDs")
     try:
-        data['ssids'] = dashboard.wireless.getNetworkWirelessSsids(network_id)
-        pp.pprint(data['ssids'])
+        data["ssids"] = dashboard.wireless.getNetworkWirelessSsids(network_id)
+        pp.pprint(data["ssids"])
     except:
         print("Wireless is not Supported")
 
     print("Backing Up Malware Settings")
     try:
-        data['malware_settings'] = dashboard.appliance.getNetworkApplianceSecurityMalware(network_id)
+        data["malware_settings"] = (
+            dashboard.appliance.getNetworkApplianceSecurityMalware(network_id)
+        )
     except:
         print("AMP is not Supported")
 
     print("Backing Up Switch Port Schedules")
     try:
-        data['switch_port_schedules'] = dashboard.switch.getNetworkSwitchPortSchedules(network_id)
+        data["switch_port_schedules"] = dashboard.switch.getNetworkSwitchPortSchedules(
+            network_id
+        )
     except:
         print("MS is not Supported")
 
     print("Backing Up Switch ACLs")
     try:
-        data['switch_acls'] = dashboard.switch.getNetworkSwitchAccessControlLists(network_id)
-        new = [item for item in data['switch_acls']['rules'] if not item["comment"] == 'Default rule']
-        data['switch_acls'] = new
+        data["switch_acls"] = dashboard.switch.getNetworkSwitchAccessControlLists(
+            network_id
+        )
+        new = [
+            item
+            for item in data["switch_acls"]["rules"]
+            if not item["comment"] == "Default rule"
+        ]
+        data["switch_acls"] = new
 
-        with open(f'configs/{name}.json', 'w+') as outfile:
+        with open(f"configs/{name}.json", "w+") as outfile:
             json.dump(data, outfile, indent=4)
     except:
         print("MS is not Supported")
@@ -94,104 +113,101 @@ def backup(network_id):
 
 # Backup Function, add restore functions here
 def restore(network_id, filename):
-    name = dashboard.networks.getNetwork(network_id)['name']
+    name = dashboard.networks.getNetwork(network_id)["name"]
     data = {}
     print(f"Restoring {name} Network from {filename}.json")
     networklist = {}
     idlist = {}
     data = {}
 
-    with open(f'configs/{filename}', 'r') as infile:
+    with open(f"configs/{filename}", "r") as infile:
         data = json.load(infile)
 
         print("Restoring MX L7 Firewalls")
         try:
-            body = data['mx_l7_firewall']['rules']
-            response = dashboard.appliance.updateNetworkApplianceFirewallL7FirewallRules(network_id, rules=body)
+            body = data["mx_l7_firewall"]["rules"]
+            response = (
+                dashboard.appliance.updateNetworkApplianceFirewallL7FirewallRules(
+                    network_id, rules=body
+                )
+            )
         except:
             print("MX is not Supported")
 
         print("Restoring 1 to 1 NAT Rules")
         try:
-            body = data['mx_1_1_nat_rules']['rules']
-            response = dashboard.appliance.updateNetworkApplianceFirewallOneToOneNatRules(network_id, rules=body)
+            body = data["mx_1_1_nat_rules"]["rules"]
+            response = (
+                dashboard.appliance.updateNetworkApplianceFirewallOneToOneNatRules(
+                    network_id, rules=body
+                )
+            )
         except:
             print("MX is not Supported")
 
-
         print("Restoring Wireless Settings")
         try:
-            body = data['wireless_settings']
-            url = f"https://api.meraki.com/api/v0/networks/{network_id}/wireless/settings"
-            payload = json.dumps(body)
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "X-Cisco-Meraki-API-Key": MERAKI_API_KEY
-            }
-            response = requests.request('PUT', url, headers=headers, data=payload)
-        except:
+            body = data["wireless_settings"]
+            dashboard.wireless.updateNetworkWirelessSettings(network_id, **body)
+        except Exception:
             print("Wireless is not Supported")
 
         print("Restoring SSIDs")
         try:
-            body = data['ssids']
+            body = data["ssids"]
             for ssid in body:
-                if 'Unconfigured SSID' in ssid['name']:
+                if "Unconfigured SSID" in ssid["name"]:
                     continue
-                else:
-                    number = str(ssid['number'])
-                    ssid.pop('number')
-                    url = f"https://api.meraki.com/api/v0/networks/{network_id}/ssids/{number}"
-                    payload = json.dumps(ssid)
-                    headers = {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                        "X-Cisco-Meraki-API-Key": MERAKI_API_KEY
-                    }
-                    response = requests.request('PUT', url, headers=headers, data=payload)
-                    print(f"Restored {ssid['name']}")
-        except:
+                number = str(ssid.pop("number"))
+                dashboard.wireless.updateNetworkWirelessSsid(network_id, number, **ssid)
+                print(f"Restored {ssid['name']}")
+        except Exception:
             print("Wireless is not Supported")
 
         print("Restoring Malware Settings")
         try:
-            body = data['malware_settings']
-            response = dashboard.appliance.updateNetworkApplianceSecurityMalware(network_id, **body)
+            body = data["malware_settings"]
+            response = dashboard.appliance.updateNetworkApplianceSecurityMalware(
+                network_id, **body
+            )
         except:
             print("AMP is not supported")
 
         print("Restoring Switch Port Schedules")
         try:
-            body = data['switch_port_schedules']
+            body = data["switch_port_schedules"]
             try:
                 for schedule in body:
-                    id = schedule['id']
-                    name = schedule['name']
-                    portSchedule = schedule['portSchedule']
-                    response = dashboard.switch.updateNetworkSwitchPortSchedule(network_id, name=name,
-                                                                                portSchedule=portSchedule,
-                                                                                portScheduleId=id)
+                    id = schedule["id"]
+                    name = schedule["name"]
+                    portSchedule = schedule["portSchedule"]
+                    response = dashboard.switch.updateNetworkSwitchPortSchedule(
+                        network_id,
+                        name=name,
+                        portSchedule=portSchedule,
+                        portScheduleId=id,
+                    )
             except:
                 for schedule in body:
                     try:
-                        id = schedule['id']
-                        name = schedule['name']
-                        portSchedule = schedule['portSchedule']
-                        response = dashboard.switch.createNetworkSwitchPortSchedule(network_id,
-                                                                                    name=name,
-                                                                                    portSchedule=portSchedule)
+                        id = schedule["id"]
+                        name = schedule["name"]
+                        portSchedule = schedule["portSchedule"]
+                        response = dashboard.switch.createNetworkSwitchPortSchedule(
+                            network_id, name=name, portSchedule=portSchedule
+                        )
                     except:
                         i = 1
-                        while (1):
+                        while 1:
                             try:
-                                id = schedule['id']
-                                name = schedule['name'] + str(i)
-                                portSchedule = schedule['portSchedule']
-                                response = dashboard.switch.createNetworkSwitchPortSchedule(network_id,
-                                                                                            name=name,
-                                                                                            portSchedule= \
-                                                                                                portSchedule)
+                                id = schedule["id"]
+                                name = schedule["name"] + str(i)
+                                portSchedule = schedule["portSchedule"]
+                                response = (
+                                    dashboard.switch.createNetworkSwitchPortSchedule(
+                                        network_id, name=name, portSchedule=portSchedule
+                                    )
+                                )
                                 break
                             except:
                                 i += 1
@@ -200,8 +216,10 @@ def restore(network_id, filename):
 
         print("Restoring Switch ACLs")
         try:
-            body = data['switch_acls']
-            response = dashboard.switch.updateNetworkSwitchAccessControlLists(network_id, rules=body)
+            body = data["switch_acls"]
+            response = dashboard.switch.updateNetworkSwitchAccessControlLists(
+                network_id, rules=body
+            )
         except:
             print("MS is not supported")
 

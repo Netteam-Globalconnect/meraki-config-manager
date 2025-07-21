@@ -22,10 +22,12 @@ __license__ = "Cisco Sample Code License, Version 1.1"
 
 import os
 import DETAILS
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+
 class Config(object):
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'testkey'
+    SECRET_KEY = os.environ.get("SECRET_KEY") or "testkey"
 
     MERAKI_API_KEY = DETAILS.MERAKI_API_KEY
     MERAKI_ORGANIZATION_ID = DETAILS.MERAKI_ORGANIZATION_ID
